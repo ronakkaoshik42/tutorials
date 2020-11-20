@@ -164,7 +164,7 @@ def train(data_folder=".", model_folder="runs"):
     )
 
     # create BasicUNet, DiceLoss and Adam optimizer
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     net = get_net().to(device)
     max_epochs, lr, momentum = 500, 1e-4, 0.95
     logging.info(f"epochs {max_epochs}, lr {lr}, momentum {momentum}")
@@ -222,7 +222,7 @@ def infer(data_folder=".", model_folder="runs", prediction_folder="output"):
     logging.info("----")
     logging.info(f"using {ckpt}.")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     net = get_net().to(device)
     net.load_state_dict(torch.load(ckpt, map_location=device))
     net.eval()
