@@ -141,7 +141,7 @@ def train(data_folder=".", model_folder="runs"):
     val_files = [{keys[0]: img, keys[1]: seg} for img, seg in zip(images[-n_val:], labels[-n_val:])]
 
     # create a training data loader
-    batch_size = 8
+    batch_size = 14
     logging.info(f"batch size {batch_size}")
     train_transforms = get_xforms("train", keys)
     train_ds = monai.data.CacheDataset(data=train_files, transform=train_transforms)
