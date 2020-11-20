@@ -62,7 +62,7 @@ def get_xforms(mode="train", keys=("image", "label")):
                     mode=("bilinear", "nearest"),
                     as_tensor_output=False,
                 ),
-                RandCropByPosNegLabeld(keys, label_key=keys[1], spatial_size=(192, 192, 16), num_samples=3),
+                RandCropByPosNegLabeld(keys, label_key=keys[1], spatial_size=(16, 16, 5), num_samples=3),
                 RandGaussianNoised(keys[0], prob=0.15, std=0.01),
                 RandFlipd(keys, spatial_axis=0, prob=0.5),
                 RandFlipd(keys, spatial_axis=1, prob=0.5),
@@ -95,7 +95,7 @@ def get_net():
 def get_inferer(_mode=None):
     """returns a sliding window inference instance."""
 
-    patch_size = (192, 192, 16)
+    patch_size = (16,16,5)
     sw_batch_size, overlap = 2, 0.5
     inferer = monai.inferers.SlidingWindowInferer(
         roi_size=patch_size,
@@ -141,7 +141,7 @@ def train(data_folder=".", model_folder="runs"):
     val_files = [{keys[0]: img, keys[1]: seg} for img, seg in zip(images[-n_val:], labels[-n_val:])]
 
     # create a training data loader
-    batch_size = 14
+    batch_size = 8
     logging.info(f"batch size {batch_size}")
     train_transforms = get_xforms("train", keys)
     train_ds = monai.data.CacheDataset(data=train_files, transform=train_transforms)
