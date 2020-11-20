@@ -141,7 +141,7 @@ def train(data_folder=".", model_folder="runs"):
     val_files = [{keys[0]: img, keys[1]: seg} for img, seg in zip(images[-n_val:], labels[-n_val:])]
 
     # create a training data loader
-    batch_size = 2
+    batch_size = 16
     logging.info(f"batch size {batch_size}")
     train_transforms = get_xforms("train", keys)
     train_ds = monai.data.CacheDataset(data=train_files, transform=train_transforms)
@@ -165,7 +165,8 @@ def train(data_folder=".", model_folder="runs"):
 
     # create BasicUNet, DiceLoss and Adam optimizer
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    net = get_net().to(device)
+    net = nn.DataParallel(get_net())
+    net = net().to(device)
     max_epochs, lr, momentum = 500, 1e-4, 0.95
     logging.info(f"epochs {max_epochs}, lr {lr}, momentum {momentum}")
     opt = torch.optim.Adam(net.parameters(), lr=lr)
