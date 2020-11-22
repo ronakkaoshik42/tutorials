@@ -62,7 +62,7 @@ def get_xforms(mode="train", keys=("image", "label")):
                     mode=("bilinear", "nearest"),
                     as_tensor_output=False,
                 ),
-                RandCropByPosNegLabeld(keys, label_key=keys[1], spatial_size=(192,192,16), num_samples=3),
+                RandCropByPosNegLabeld(keys, label_key=keys[1], spatial_size=(192, 192, 16), num_samples=3),
                 RandGaussianNoised(keys[0], prob=0.15, std=0.01),
                 RandFlipd(keys, spatial_axis=0, prob=0.5),
                 RandFlipd(keys, spatial_axis=1, prob=0.5),
@@ -95,7 +95,7 @@ def get_net():
 def get_inferer(_mode=None):
     """returns a sliding window inference instance."""
 
-    patch_size = (192,192,16)
+    patch_size = (192, 192, 16)
     sw_batch_size, overlap = 8, 0.5
     inferer = monai.inferers.SlidingWindowInferer(
         roi_size=patch_size,
@@ -164,7 +164,7 @@ def train(data_folder=".", model_folder="runs"):
     )
 
     # create BasicUNet, DiceLoss and Adam optimizer
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net = get_net().to(device)
     max_epochs, lr, momentum = 500, 1e-4, 0.95
     logging.info(f"epochs {max_epochs}, lr {lr}, momentum {momentum}")
@@ -222,7 +222,7 @@ def infer(data_folder=".", model_folder="runs", prediction_folder="output"):
     logging.info("----")
     logging.info(f"using {ckpt}.")
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net = get_net().to(device)
     net.load_state_dict(torch.load(ckpt, map_location=device))
     net.eval()
