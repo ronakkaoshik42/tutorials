@@ -158,7 +158,7 @@ def train(data_folder=".", model_folder="runs"):
     val_ds = monai.data.CacheDataset(data=val_files, transform=val_transforms)
     val_loader = monai.data.DataLoader(
         val_ds,
-        batch_size=8,  # image-level batch to the sliding window method, not the window-level batch
+        batch_size=1,  # image-level batch to the sliding window method, not the window-level batch
         num_workers=2,
         pin_memory=torch.cuda.is_available(),
     )
