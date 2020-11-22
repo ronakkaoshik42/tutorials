@@ -62,7 +62,7 @@ def get_xforms(mode="train", keys=("image", "label")):
                     mode=("bilinear", "nearest"),
                     as_tensor_output=False,
                 ),
-                RandCropByPosNegLabeld(keys, label_key=keys[1], spatial_size=(32,32,10), num_samples=3),
+                RandCropByPosNegLabeld(keys, label_key=keys[1], spatial_size=(192,192,16), num_samples=3),
                 RandGaussianNoised(keys[0], prob=0.15, std=0.01),
                 RandFlipd(keys, spatial_axis=0, prob=0.5),
                 RandFlipd(keys, spatial_axis=1, prob=0.5),
@@ -95,7 +95,7 @@ def get_net():
 def get_inferer(_mode=None):
     """returns a sliding window inference instance."""
 
-    patch_size = (32,32,10)
+    patch_size = (192,192,16)
     sw_batch_size, overlap = 8, 0.5
     inferer = monai.inferers.SlidingWindowInferer(
         roi_size=patch_size,
