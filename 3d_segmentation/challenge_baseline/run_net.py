@@ -20,7 +20,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from ignite.contrib.handlers import ProgressBar
-
+from monai.networks.utils import one_hot
 import monai
 from monai.handlers import CheckpointSaver, MeanDice, StatsHandler, ValidationHandler
 from monai.transforms import (
@@ -134,22 +134,24 @@ class FocalTverskyLoss(nn.Module):
     def forward(self, inputs, targets, smooth=1, alpha=ALPHA, beta=BETA, gamma=GAMMA):
         
         #comment out if your model contains a sigmoid or equivalent activation layer
-#         inputs = F.sigmoid(inputs)       
-        
+        # inputs = F.sigmoid(inputs)       
+        # print(inputs.shape,targets.shape)
+        n_pred_ch = inputs.shape[1]
+        inputs = torch.softmax(inputs, 1)
+        targets = one_hot(targets, num_classes=n_pred_ch)
+        reduce_axis = list(range(2, len(inputs.shape)))
         #flatten label and prediction tensors
-        inputs = inputs.view(-1)
-        targets = targets.view(-1)
-        
+        inputs = torch.flatten(inputs,start_dim=2)
+        targets = torch.flatten(targets,start_dim=2)        
         #True Positives, False Positives & False Negatives
-        TP = (inputs * targets).sum()    
-        FP = ((1-targets) * inputs).sum()
-        FN = (targets * (1-inputs)).sum()
+        TP = torch.sum(inputs * targets,dim=2)
+        FP = torch.sum(((1-targets) * inputs),dim=2)
+        FN = torch.sum((targets * (1-inputs)),dim=2)
         
         Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)  
         FocalTversky = (1 - Tversky)**gamma
-                       
+        
         return FocalTversky
-
 
 
 def train(data_folder=".", model_folder="runs"):
@@ -195,7 +197,7 @@ def train(data_folder=".", model_folder="runs"):
     # create BasicUNet, DiceLoss and Adam optimizer
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net = get_net().to(device)
-    max_epochs, lr, momentum = 500, 1e-4, 0.95
+    max_epochs, lr, momentum = 500, 1e-3, 0.99
     logging.info(f"epochs {max_epochs}, lr {lr}, momentum {momentum}")
     opt = torch.optim.Adam(net.parameters(), lr=lr)
 
