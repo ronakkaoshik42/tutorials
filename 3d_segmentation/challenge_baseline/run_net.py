@@ -107,20 +107,49 @@ def get_inferer(_mode=None):
     return inferer
 
 
-class DiceCELoss(nn.Module):
-    """Dice and Xentropy loss"""
+# class DiceCELoss(nn.Module):
+#     """Dice and Xentropy loss"""
 
-    def __init__(self):
-        super().__init__()
-        self.dice = monai.losses.DiceLoss(to_onehot_y=True, softmax=True)
-        self.cross_entropy = nn.CrossEntropyLoss()
+#     def __init__(self):
+#         super().__init__()
+#         self.dice = monai.losses.DiceLoss(to_onehot_y=True, softmax=True)
+#         self.cross_entropy = nn.CrossEntropyLoss()
 
-    def forward(self, y_pred, y_true):
-        dice = self.dice(y_pred, y_true)
-        # CrossEntropyLoss target needs to have shape (B, D, H, W)
-        # Target from pipeline has shape (B, 1, D, H, W)
-        cross_entropy = self.cross_entropy(y_pred, torch.squeeze(y_true, dim=1).long())
-        return dice + cross_entropy
+#     def forward(self, y_pred, y_true):
+#         dice = self.dice(y_pred, y_true)
+#         # CrossEntropyLoss target needs to have shape (B, D, H, W)
+#         # Target from pipeline has shape (B, 1, D, H, W)
+#         cross_entropy = self.cross_entropy(y_pred, torch.squeeze(y_true, dim=1).long())
+#         return dice + cross_entropy
+
+#PyTorch
+ALPHA = 0.5
+BETA = 0.5
+GAMMA = 1
+
+class FocalTverskyLoss(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(FocalTverskyLoss, self).__init__()
+
+    def forward(self, inputs, targets, smooth=1, alpha=ALPHA, beta=BETA, gamma=GAMMA):
+        
+        #comment out if your model contains a sigmoid or equivalent activation layer
+#         inputs = F.sigmoid(inputs)       
+        
+        #flatten label and prediction tensors
+        inputs = inputs.view(-1)
+        targets = targets.view(-1)
+        
+        #True Positives, False Positives & False Negatives
+        TP = (inputs * targets).sum()    
+        FP = ((1-targets) * inputs).sum()
+        FN = (targets * (1-inputs)).sum()
+        
+        Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)  
+        FocalTversky = (1 - Tversky)**gamma
+                       
+        return FocalTversky
+
 
 
 def train(data_folder=".", model_folder="runs"):
@@ -202,7 +231,7 @@ def train(data_folder=".", model_folder="runs"):
         train_data_loader=train_loader,
         network=net,
         optimizer=opt,
-        loss_function=DiceCELoss(),
+        loss_function=FocalTverskyLoss(),
         inferer=get_inferer(),
         key_train_metric=None,
         train_handlers=train_handlers,
