@@ -130,6 +130,8 @@ GAMMA = 1
 class FocalTverskyLoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
         super(FocalTverskyLoss, self).__init__()
+        self.dice = monai.losses.DiceLoss(to_onehot_y=True, softmax=True)
+        self.cross_entropy = nn.CrossEntropyLoss()
 
     def forward(self, inputs, targets, smooth=1, alpha=ALPHA, beta=BETA, gamma=GAMMA):
         
@@ -150,8 +152,9 @@ class FocalTverskyLoss(nn.Module):
         
         Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)  
         FocalTversky = (1 - Tversky)**gamma
-        
-        return FocalTversky
+        dice = self.dice(inputs, targets)
+        cross_entropy = self.cross_entropy(inputs, torch.squeeze(targets, dim=1).long())
+        return FocalTversky + dice + cross_entropy
 
 
 def train(data_folder=".", model_folder="runs"):
