@@ -134,7 +134,8 @@ class FocalTverskyLoss(nn.Module):
         self.cross_entropy = nn.CrossEntropyLoss()
 
     def forward(self, inputs, targets, smooth=1, alpha=ALPHA, beta=BETA, gamma=GAMMA):
-        
+        dice = self.dice(inputs, targets)
+        cross_entropy = self.cross_entropy(inputs, torch.squeeze(targets, dim=1).long())
         #comment out if your model contains a sigmoid or equivalent activation layer
         # inputs = F.sigmoid(inputs)       
         # print(inputs.shape,targets.shape)
@@ -152,9 +153,8 @@ class FocalTverskyLoss(nn.Module):
         
         Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)  
         FocalTversky = (1 - Tversky)**gamma
-        dice = self.dice(inputs, targets)
-        cross_entropy = self.cross_entropy(inputs, torch.squeeze(targets, dim=1).long())
-        return FocalTversky + dice + cross_entropy
+        
+        return FocalTversky+dice+cross_entropy
 
 
 def train(data_folder=".", model_folder="runs"):
