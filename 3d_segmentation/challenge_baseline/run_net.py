@@ -130,10 +130,10 @@ GAMMA = 1
 class FocalTverskyLoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
         super(FocalTverskyLoss, self).__init__()
-        self.dice = monai.losses.DiceLoss(to_onehot_y=True, softmax=True)
+#         self.dice = monai.losses.DiceLoss(to_onehot_y=True, softmax=True)
 
     def forward(self, inputs, targets, smooth=1, alpha=ALPHA, beta=BETA, gamma=GAMMA):
-        dice = self.dice(inputs, targets)
+#         dice = self.dice(inputs, targets)
         #comment out if your model contains a sigmoid or equivalent activation layer
         # inputs = F.sigmoid(inputs)       
         # print(inputs.shape,targets.shape)
@@ -152,7 +152,7 @@ class FocalTverskyLoss(nn.Module):
         Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)  
         FocalTversky = (1 - Tversky)**gamma
         
-        return FocalTversky+dice
+        return FocalTversky
 
 
 def train(data_folder=".", model_folder="runs"):
