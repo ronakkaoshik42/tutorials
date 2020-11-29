@@ -198,7 +198,7 @@ def train(data_folder=".", model_folder="runs"):
     # create BasicUNet, DiceLoss and Adam optimizer
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net = get_net().to(device)
-    max_epochs, lr, momentum = 500, 1e-3, 0.99
+    max_epochs, lr, momentum = 500, 1e-4, 0.99
     logging.info(f"epochs {max_epochs}, lr {lr}, momentum {momentum}")
     opt = torch.optim.Adam(net.parameters(), lr=lr)
 
