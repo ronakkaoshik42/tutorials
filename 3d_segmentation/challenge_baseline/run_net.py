@@ -123,9 +123,9 @@ def get_inferer(_mode=None):
 #         return dice + cross_entropy
 
 #PyTorch
-ALPHA = 0.5
-BETA = 0.5
-GAMMA = 1
+ALPHA = 0.7
+BETA = 0.3
+GAMMA = 4/3
 
 class FocalTverskyLoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
