@@ -15,7 +15,7 @@ import logging
 import os
 import shutil
 import sys
-
+from model import Custom_UNet
 import numpy as np
 import torch
 import torch.nn as nn
@@ -78,17 +78,23 @@ def get_xforms(mode="train", keys=("image", "label")):
     return monai.transforms.Compose(xforms)
 
 
+
+
+
 def get_net():
     """returns a unet model instance."""
 
     n_classes = 2
-    net = monai.networks.nets.BasicUNet(
-        dimensions=3,
-        in_channels=1,
-        out_channels=n_classes,
-        features=(32, 32, 64, 128, 256, 32),
-        dropout=0.1,
-    )
+
+    net = Custom_UNet()
+    # net = monai.networks.nets.BasicUNet(
+    #     dimensions=3,
+    #     in_channels=1,
+    #     out_channels=n_classes,
+    #     features=(32, 32, 64, 128, 256, 32),
+    #     dropout=0.1,
+    # )
+
     return net
 
 
@@ -107,52 +113,55 @@ def get_inferer(_mode=None):
     return inferer
 
 
-# class DiceCELoss(nn.Module):
-#     """Dice and Xentropy loss"""
+class DiceCELoss(nn.Module):
+    """Dice and Xentropy loss"""
 
-#     def __init__(self):
-#         super().__init__()
+    def __init__(self):
+        super().__init__()
+        self.dice = monai.losses.DiceLoss(to_onehot_y=True, softmax=True)
+        # self.cross_entropy = nn.CrossEntropyLoss()
+
+    def forward(self, y_pred, y_true):
+        dice = self.dice(y_pred, y_true)
+        # CrossEntropyLoss target needs to have shape (B, D, H, W)
+        # Target from pipeline has shape (B, 1, D, H, W)
+        # cross_entropy = self.cross_entropy(y_pred, torch.squeeze(y_true, dim=1).long())
+        # return dice + cross_entropy
+        return dice
+
+#PyTorch
+# ALPHA = 0.5
+# BETA = 0.5
+# GAMMA = 1
+
+# class FocalTverskyLoss(nn.Module):
+#     def __init__(self, weight=None, size_average=True):
+#         super(FocalTverskyLoss, self).__init__()
 #         self.dice = monai.losses.DiceLoss(to_onehot_y=True, softmax=True)
 #         self.cross_entropy = nn.CrossEntropyLoss()
 
-#     def forward(self, y_pred, y_true):
-#         dice = self.dice(y_pred, y_true)
-#         # CrossEntropyLoss target needs to have shape (B, D, H, W)
-#         # Target from pipeline has shape (B, 1, D, H, W)
-#         cross_entropy = self.cross_entropy(y_pred, torch.squeeze(y_true, dim=1).long())
-#         return dice + cross_entropy
-
-#PyTorch
-ALPHA = 0.7
-BETA = 0.3
-GAMMA = 4/3
-
-class FocalTverskyLoss(nn.Module):
-    def __init__(self, weight=None, size_average=True):
-        super(FocalTverskyLoss, self).__init__()
-#         self.dice = monai.losses.DiceLoss(to_onehot_y=True, softmax=True)
-
-    def forward(self, inputs, targets, smooth=1, alpha=ALPHA, beta=BETA, gamma=GAMMA):
+#     def forward(self, inputs, targets, smooth=1, alpha=ALPHA, beta=BETA, gamma=GAMMA):
 #         dice = self.dice(inputs, targets)
-        #comment out if your model contains a sigmoid or equivalent activation layer
-        # inputs = F.sigmoid(inputs)       
-        # print(inputs.shape,targets.shape)
-        n_pred_ch = inputs.shape[1]
-        inputs = torch.softmax(inputs, 1)
-        targets = one_hot(targets, num_classes=n_pred_ch)
-        reduce_axis = list(range(2, len(inputs.shape)))
-        #flatten label and prediction tensors
-        inputs = torch.flatten(inputs,start_dim=2)
-        targets = torch.flatten(targets,start_dim=2)        
-        #True Positives, False Positives & False Negatives
-        TP = torch.sum(inputs * targets,dim=2)
-        FP = torch.sum(((1-targets) * inputs),dim=2)
-        FN = torch.sum((targets * (1-inputs)),dim=2)
+#         cross_entropy = self.cross_entropy(inputs, torch.squeeze(targets, dim=1).long())
+#         #comment out if your model contains a sigmoid or equivalent activation layer
+#         # inputs = F.sigmoid(inputs)       
+#         # print(inputs.shape,targets.shape)
+#         n_pred_ch = inputs.shape[1]
+#         inputs = torch.softmax(inputs, 1)
+#         targets = one_hot(targets, num_classes=n_pred_ch)
+#         reduce_axis = list(range(2, len(inputs.shape)))
+#         #flatten label and prediction tensors
+#         inputs = torch.flatten(inputs,start_dim=2)
+#         targets = torch.flatten(targets,start_dim=2)        
+#         #True Positives, False Positives & False Negatives
+#         TP = torch.sum(inputs * targets,dim=2)
+#         FP = torch.sum(((1-targets) * inputs),dim=2)
+#         FN = torch.sum((targets * (1-inputs)),dim=2)
         
-        Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)  
-        FocalTversky = (1 - Tversky)**gamma
+#         Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)  
+#         FocalTversky = (1 - Tversky)**gamma
         
-        return FocalTversky
+#         return FocalTversky+dice+cross_entropy
 
 
 def train(data_folder=".", model_folder="runs"):
@@ -198,7 +207,7 @@ def train(data_folder=".", model_folder="runs"):
     # create BasicUNet, DiceLoss and Adam optimizer
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     net = get_net().to(device)
-    max_epochs, lr, momentum = 500, 1e-4, 0.99
+    max_epochs, lr, momentum = 500, 1e-3, 0.99
     logging.info(f"epochs {max_epochs}, lr {lr}, momentum {momentum}")
     opt = torch.optim.Adam(net.parameters(), lr=lr)
 
@@ -234,7 +243,7 @@ def train(data_folder=".", model_folder="runs"):
         train_data_loader=train_loader,
         network=net,
         optimizer=opt,
-        loss_function=FocalTverskyLoss(),
+        loss_function=DiceCELoss(),
         inferer=get_inferer(),
         key_train_metric=None,
         train_handlers=train_handlers,
